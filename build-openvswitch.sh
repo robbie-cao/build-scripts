@@ -30,19 +30,14 @@
 #     /usr/local/share/openvswitch/scripts/ovs-ctl force-reload-kmod --system-id=random
 #
 PKG_NAME=openvswitch
-PKG_VERSION=2.3.2
+PKG_VERSION=2.4.0
 PKG_SOURCE="$PKG_NAME-$PKG_VERSION.tar.gz"
 PKG_SOURCE_URL="http://openvswitch.org/releases/$PKG_SOURCE"
-PKG_SOURCE_MD5SUM=5a5739ed82f1accac1c2d8d7553dc88f
+PKG_SOURCE_MD5SUM=4ff52595855c1f9e4dd3e84295599f5f
 PKG_DEPENDS=openssl
 PKG_PLATFORM=linux
 
 . "$PWD/env.sh"
-
-CONFIGURE_ARGS="$CONFIGURE_ARGS		\\
-	--enable-shared					\\
-	--enable-ndebug					\\
-"
 
 # build only userspace tools by default
 #
@@ -64,12 +59,27 @@ CONFIGURE_ARGS="$CONFIGURE_ARGS		\\
 #   https://github.com/openvswitch/ovs/blob/master/FAQ.md#q-what-linux-kernel-versions-does-each-open-vswitch-release-work-with
 # - Are all features available with all datapaths?
 #	https://github.com/openvswitch/ovs/blob/master/FAQ.md#q-are-all-features-available-with-all-datapaths
-if false; then
-	KBUILD_DIR="/lib/modules/$(uname -r)/build"
+
+openvswitch_with_kmod="/lib/modules/$(uname -r)/build"
+openvswitch_with_dpdk="$BASE_BUILD_DIR/dpdk-2.0.0/x86_64-native-linuxapp-gcc"
+
+CONFIGURE_ARGS="$CONFIGURE_ARGS		\\
+	--enable-shared					\\
+	--enable-ndebug					\\
+"
+
+if [ -n "$openvswitch_with_kmod" ]; then
 	# --with-linux, the Linux kernel build directory
 	# --with-linux-source, the Linux kernel source directory
-	# --with-dpdk, the DPDK build directory
-	CONFIGURE_ARGS="$CONFIGURE_ARGS			\\
-		--with-linux="$KBUILD_DIR"			\\
+	CONFIGURE_ARGS="$CONFIGURE_ARGS				\\
+		--with-linux="$openvswitch_with_kmod"	\\
 	"
+fi
+
+if [ -n "$openvswitch_with_dpdk" ]; then
+	# --with-dpdk, the DPDK build directory
+	CONFIGURE_ARGS="$CONFIGURE_ARGS				\\
+		--with-dpdk="$openvswitch_with_dpdk"	\\
+	"
+	PKG_DEPENDS="$PKG_DEPENDS dpdk"
 fi
