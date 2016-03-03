@@ -18,10 +18,10 @@
 # rte_kni.ko, igb_uio.ko, etc.
 #
 PKG_NAME=dpdk
-PKG_VERSION=2.0.0
+PKG_VERSION=2.2.0
 PKG_SOURCE="$PKG_NAME-$PKG_VERSION.tar.gz"
 PKG_SOURCE_URL="http://dpdk.org/browse/dpdk/snapshot/$PKG_SOURCE"
-PKG_SOURCE_MD5SUM=e9e7935c9eec920841ad373949514934
+PKG_SOURCE_MD5SUM=22e2fd68cd5504f43fe9a5a6fd6dd938
 PKG_PLATFORM=linux
 
 . "$PWD/env.sh"
@@ -45,17 +45,13 @@ configure() {
 # the compiler
 EXTRA_LDFLAGS="$(echo "$EXTRA_LDFLAGS" | sed -e 's/-Wl,-rpath,/-rpath=/g')"
 MAKE_VARS="								\\
-	V=1									\\
-	T='$dpdk_target'					\\
 	EXTRA_CPPFLAGS='$EXTRA_CPPFLAGS'	\\
 	EXTRA_CFLAGS='$EXTRA_CFLAGS -fPIC'	\\
 	EXTRA_LDFLAGS='$EXTRA_LDFLAGS'		\\
+	prefix='$dpdk_prefix'				\\
+	T='$dpdk_target'					\\
+	V=1									\\
 "
-
-PKG_STAGING_DIR=''
-install() {
-	true
-}
 
 # Changes in build method from 2.0.0 to 2.2.0
 #

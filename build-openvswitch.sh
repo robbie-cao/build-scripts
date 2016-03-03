@@ -30,14 +30,78 @@
 #     /usr/local/share/openvswitch/scripts/ovs-ctl force-reload-kmod --system-id=random
 #
 PKG_NAME=openvswitch
-PKG_VERSION=2.4.0
+PKG_VERSION=2.5.0
 PKG_SOURCE="$PKG_NAME-$PKG_VERSION.tar.gz"
 PKG_SOURCE_URL="http://openvswitch.org/releases/$PKG_SOURCE"
-PKG_SOURCE_MD5SUM=4ff52595855c1f9e4dd3e84295599f5f
+PKG_SOURCE_MD5SUM=d86045933aa8f582f1d74ab77f998e44
+PKG_AUTOCONF_FIXUP=1
 PKG_DEPENDS=openssl
 PKG_PLATFORM=linux
 
 . "$PWD/env.sh"
+
+do_patch() {
+	cd "$PKG_SOURCE_DIR"
+	patch -p1 <<"EOF"
+From: Sabyasachi Sengupta <sabyasachi.sengupta at alcatel-lucent.com>
+
+The build was failing with following error:
+
+----
+  CC [M]  /home/sabyasse/Linux/src/sandbox/ovs_v1/datapath/linux/vport.o
+/home/sabyasse/Linux/src/sandbox/ovs_v1/datapath/linux/vport.c: In
+function ‘ovs_vport_get_stats’:
+/home/sabyasse/Linux/src/sandbox/ovs_v1/datapath/linux/vport.c:328:
+error: implicit declaration of function ‘dev_get_stats64’
+----
+
+The issue is fixed by checking for existence of dev_get_stats64 in
+netdevice.h and then using it (in C6.7+, 2.6.32-594 kernels). For
+previous kernels use compat rpl_dev_get_stats.
+---
+This patch was originally submitted at:
+	https://github.com/openvswitch/ovs/pull/105
+I'm submitting here because I don't think any datapath reviewers
+follow github pull requests.
+
+ acinclude.m4                                    | 1 +
+ datapath/linux/compat/include/linux/netdevice.h | 6 ++++++
+ 2 files changed, 7 insertions(+)
+
+diff --git a/acinclude.m4 b/acinclude.m4
+index 9d652c2..51cb950 100644
+--- a/acinclude.m4
++++ b/acinclude.m4
+@@ -358,6 +358,7 @@ AC_DEFUN([OVS_CHECK_LINUX_COMPAT], [
+                   [OVS_DEFINE([HAVE_SOCK_CREATE_KERN_NET])])
+   OVS_GREP_IFELSE([$KSRC/include/linux/netdevice.h], [dev_disable_lro])
+   OVS_GREP_IFELSE([$KSRC/include/linux/netdevice.h], [dev_get_stats])
++  OVS_GREP_IFELSE([$KSRC/include/linux/netdevice.h], [dev_get_stats64])
+   OVS_GREP_IFELSE([$KSRC/include/linux/netdevice.h], [dev_get_by_index_rcu])
+   OVS_GREP_IFELSE([$KSRC/include/linux/netdevice.h], [dev_recursion_level])
+   OVS_GREP_IFELSE([$KSRC/include/linux/netdevice.h], [__skb_gso_segment])
+diff --git a/datapath/linux/compat/include/linux/netdevice.h b/datapath/linux/compat/include/linux/netdevice.h
+index 19a7b8e..6143343 100644
+--- a/datapath/linux/compat/include/linux/netdevice.h
++++ b/datapath/linux/compat/include/linux/netdevice.h
+@@ -268,7 +268,13 @@ struct rtnl_link_stats64 *rpl_dev_get_stats(struct net_device *dev,
+ 
+ #if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7,0)
+ /* Only required on RHEL 6. */
++#ifdef HAVE_DEV_GET_STATS64
+ #define dev_get_stats dev_get_stats64
++#else
++#define dev_get_stats rpl_dev_get_stats
++struct rtnl_link_stats64 *rpl_dev_get_stats(struct net_device *dev,
++					struct rtnl_link_stats64 *storage);
++#endif
+ #endif
+ 
+ #ifndef netdev_dbg
+-- 
+2.1.3
+EOF
+}
 
 # build only userspace tools by default
 #
@@ -61,7 +125,7 @@ PKG_PLATFORM=linux
 #	https://github.com/openvswitch/ovs/blob/master/FAQ.md#q-are-all-features-available-with-all-datapaths
 
 openvswitch_with_kmod="/lib/modules/$(uname -r)/build"
-openvswitch_with_dpdk="$BASE_BUILD_DIR/dpdk-2.0.0/x86_64-native-linuxapp-gcc"
+openvswitch_with_dpdk="$BASE_BUILD_DIR/dpdk-2.2.0/x86_64-native-linuxapp-gcc"
 
 CONFIGURE_ARGS="$CONFIGURE_ARGS		\\
 	--enable-shared					\\
@@ -83,3 +147,6 @@ if [ -n "$openvswitch_with_dpdk" ]; then
 	"
 	PKG_DEPENDS="$PKG_DEPENDS dpdk"
 fi
+
+# kernel modules has to be installed with make modules_install.  We may need to
+# reword install() in env.sh to `cpdir $PKG_STAGING_DIR /`
