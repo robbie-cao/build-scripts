@@ -40,8 +40,31 @@ PKG_PLATFORM=linux
 
 . "$PWD/env.sh"
 
-do_patch() {
-	cd "$PKG_SOURCE_DIR"
+do_patch_include_dpdk() {
+	patch -p0 <<"EOF"
+--- acinclude.m4.orig	2016-03-03 11:33:33.991889501 +0800
++++ acinclude.m4	2016-03-03 11:33:37.528954440 +0800
+@@ -170,14 +170,14 @@ AC_DEFUN([OVS_CHECK_DPDK], [
+   if test X"$with_dpdk" != X; then
+     RTE_SDK=$with_dpdk
+ 
+-    DPDK_INCLUDE=$RTE_SDK/include
++    DPDK_INCLUDE=$RTE_SDK/include/dpdk
+     DPDK_LIB_DIR=$RTE_SDK/lib
+     DPDK_LIB="-ldpdk"
+     DPDK_EXTRA_LIB=""
+     RTE_SDK_FULL=`readlink -f $RTE_SDK`
+ 
+     AC_COMPILE_IFELSE(
+-      [AC_LANG_PROGRAM([#include <$RTE_SDK_FULL/include/rte_config.h>
++      [AC_LANG_PROGRAM([#include <$RTE_SDK_FULL/include/dpdk/rte_config.h>
+ #if !RTE_LIBRTE_VHOST_USER
+ #error
+ #endif], [])],
+EOF
+}
+
+do_patch_dev_get_stats64() {
 	patch -p1 <<"EOF"
 From: Sabyasachi Sengupta <sabyasachi.sengupta at alcatel-lucent.com>
 
@@ -72,7 +95,7 @@ diff --git a/acinclude.m4 b/acinclude.m4
 index 9d652c2..51cb950 100644
 --- a/acinclude.m4
 +++ b/acinclude.m4
-@@ -358,6 +358,7 @@ AC_DEFUN([OVS_CHECK_LINUX_COMPAT], [
+@@ -375,6 +375,7 @@ AC_DEFUN([OVS_CHECK_LINUX_COMPAT], [
                    [OVS_DEFINE([HAVE_SOCK_CREATE_KERN_NET])])
    OVS_GREP_IFELSE([$KSRC/include/linux/netdevice.h], [dev_disable_lro])
    OVS_GREP_IFELSE([$KSRC/include/linux/netdevice.h], [dev_get_stats])
@@ -103,6 +126,12 @@ index 19a7b8e..6143343 100644
 EOF
 }
 
+do_patch() {
+	cd "$PKG_SOURCE_DIR"
+	do_patch_dev_get_stats64
+	do_patch_include_dpdk
+}
+
 # build only userspace tools by default
 #
 # the Linux kernel versions against which the given versions of the Open
@@ -125,7 +154,7 @@ EOF
 #	https://github.com/openvswitch/ovs/blob/master/FAQ.md#q-are-all-features-available-with-all-datapaths
 
 openvswitch_with_kmod="/lib/modules/$(uname -r)/build"
-openvswitch_with_dpdk="$BASE_BUILD_DIR/dpdk-2.2.0/x86_64-native-linuxapp-gcc"
+openvswitch_with_dpdk="$INSTALL_PREFIX/dpdk/dpdk-2.2.0-x86_64-native-linuxapp-gcc"
 
 CONFIGURE_ARGS="$CONFIGURE_ARGS		\\
 	--enable-shared					\\
