@@ -309,7 +309,7 @@ build_configure_cmake() {
 		"$PKG_SOURCE_DIR/$PKG_CMAKE_SOURCE_SUBDIR"
 }
 
-compile() {
+build_compile_make() {
 	local envs="${MAKE_ENVS%\\*}"
 	local vars="${MAKE_VARS%\\*}"
 	local args="${MAKE_ARGS%\\*}"
@@ -319,7 +319,11 @@ compile() {
 		CPPFLAGS="'$EXTRA_CPPFLAGS'" \
 		LDFLAGS="'$EXTRA_LDFLAGS'" \
 		"$envs" \
-		$MAKEJ "$args" ${PKG_CMAKE:+VERBOSE=1} "$vars"
+		$MAKEJ "$args" ${PKG_CMAKE:+VERBOSE=1} "$vars" "$@"
+}
+
+compile() {
+	build_compile_make
 }
 
 autoconf_fixup() {
@@ -349,13 +353,17 @@ staging_pre() {
 	rm -rf "$PKG_STAGING_DIR"
 }
 
-staging() {
+build_staging() {
 	local envs="${MAKE_ENVS%\\*}"
 	local vars="${MAKE_VARS%\\*}"
 	local args="${MAKE_ARGS%\\*}"
 
 	cd "$PKG_BUILD_DIR"
-	eval "$envs" $MAKEJ "$args" install DESTDIR="$PKG_STAGING_DIR" ${PKG_CMAKE:+VERBOSE=1} $vars
+	eval "$envs" $MAKEJ "$args" DESTDIR="$PKG_STAGING_DIR" ${PKG_CMAKE:+VERBOSE=1} $vars "$@"
+}
+
+staging() {
+	build_staging 'install'
 }
 
 staging_post() {
