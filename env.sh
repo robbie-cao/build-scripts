@@ -390,11 +390,16 @@ archive() {
 	true
 }
 
+clean_extra() {
+	true
+}
+
 clean() {
 	rm -rf "$PKG_BUILD_DIR"
 	if [ "$PKG_SOURCE_DIR" != "$PKG_BUILD_DIR" ]; then
 		rm -rf "$PKG_SOURCE_DIR"
 	fi
+	clean_extra
 }
 
 uninstall() {
