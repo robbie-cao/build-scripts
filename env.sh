@@ -82,6 +82,7 @@ env_init() {
 		EXTRA_LDFLAGS="$EXTRA_LDFLAGS -L$MACPORTS_PREFIX/lib -Wl,-rpath,$MACPORTS_PREFIX/lib"
 	fi
 	export PKG_CONFIG_PATH
+
 	if ! running_in_make || [ -n "$NJOBS" ]; then
 		NJOBS="${NJOBS:-$((2 * $(ncpus)))}"
 		MAKEJ="make -j $NJOBS"
@@ -133,13 +134,17 @@ env_init_pkg() {
 	fi
 
 	CONFIGURE_PATH="${CONFIGURE_PATH:-$PKG_BUILD_DIR}"
-	CONFIGURE_VARS='CPPFLAGS="$EXTRA_CPPFLAGS"		\
-					CFLAGS="$EXTRA_CFLAGS"			\
-					LDFLAGS="$EXTRA_LDFLAGS"		\
-	'
+	if [ -z "$CONFIGURE_VARS" ]; then
+		CONFIGURE_VARS='CPPFLAGS="$EXTRA_CPPFLAGS"		\
+						CFLAGS="$EXTRA_CFLAGS"			\
+						LDFLAGS="$EXTRA_LDFLAGS"		\
+		'
+	fi
 	CONFIGURE_CMD="${CONFIGURE_CMD:-$PKG_SOURCE_DIR/configure}"
-	CONFIGURE_ARGS="--prefix='$INSTALL_PREFIX'		\\
-"
+	if [ -z "$CONFIGURE_ARGS" ]; then
+		CONFIGURE_ARGS="--prefix='$INSTALL_PREFIX'		\\
+		"
+	fi
 }
 
 env_csum_check() {
